@@ -33,3 +33,10 @@ Thumbs.db
 # Build
 frontend/dist/
 backend/server_log*.txt
+
+# Media and Assets
+music/
+assets/
+*.mp3
+*.wav
+*.m4a

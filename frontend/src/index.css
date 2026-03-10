@@ -64,3 +64,26 @@ h1, h2, h3 {
   margin: 0 auto;
   padding: 2rem;
 }
+
+.input-field {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--glass-border);
+    color: white;
+    outline: none;
+    transition: border-color 0.3s;
+    margin-top: 0.25rem;
+}
+
+.input-field:focus {
+    border-color: var(--accent-color);
+}
+
+.label {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}

@@ -11,7 +11,7 @@ const AdminPanel = () => {
 
     const handleSubmitNews = async (e) => {
         e.preventDefault();
-        const res = await fetch('http://localhost:8001/news', {
+        const res = await fetch('http://127.0.0.1:8001/news', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ title, content })
@@ -27,7 +27,7 @@ const AdminPanel = () => {
     const toggleLive = async () => {
         if (!isBroadcasting) {
             // Start Live
-            const ws = new WebSocket('ws://localhost:8001/ws/admin');
+            const ws = new WebSocket('ws://127.0.0.1:8001/ws/admin');
             wsRef.current = ws;
 
             ws.onopen = async () => {
@@ -58,11 +58,92 @@ const AdminPanel = () => {
         }
     };
 
+    const [musicList, setMusicList] = useState([]);
+    const [musicTitle, setMusicTitle] = useState('');
+    const [musicArtist, setMusicArtist] = useState('');
+    const [musicUrl, setMusicUrl] = useState('');
+    const [musicFile, setMusicFile] = useState(null);
+    const [musicType, setMusicType] = useState('file'); // 'file', 'youtube', 'spotify'
+
+    React.useEffect(() => {
+        fetchMusic();
+    }, []);
+
+    const fetchMusic = async () => {
+        const res = await fetch('http://127.0.0.1:8001/music');
+        if (res.ok) {
+            const data = await res.json();
+            setMusicList(data);
+        }
+    };
+
+    const handleUploadMusic = async (e) => {
+        e.preventDefault();
+        const formData = new FormData();
+        formData.append('title', musicTitle);
+        formData.append('artist', musicArtist);
+        formData.append('file', musicFile);
+
+        const res = await fetch('http://127.0.0.1:8001/music/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (res.ok) {
+            const newMusic = await res.json();
+            setMusicList(prev => [newMusic, ...prev]);
+            resetMusicForm();
+        }
+    };
+
+    const handleAddLink = async (e) => {
+        e.preventDefault();
+        const res = await fetch('http://127.0.0.1:8001/music/link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: musicTitle,
+                artist: musicArtist,
+                type: musicType,
+                url: musicUrl
+            })
+        });
+
+        if (res.ok) {
+            const newMusic = await res.json();
+            setMusicList(prev => [newMusic, ...prev]);
+            resetMusicForm();
+        }
+    };
+
+    const handleDeleteMusic = async (id) => {
+        const res = await fetch(`http://127.0.0.1:8001/music/${id}`, {
+            method: 'DELETE'
+        });
+        if (res.ok) {
+            setMusicList(prev => prev.filter(m => m.id !== id));
+        }
+    };
+
+    const handlePlayMusic = async (id) => {
+        await fetch(`http://127.0.0.1:8001/music/${id}/play`, {
+            method: 'POST'
+        });
+    };
+
+    const resetMusicForm = () => {
+        setMusicTitle('');
+        setMusicArtist('');
+        setMusicUrl('');
+        setMusicFile(null);
+    };
+
     return (
         <div className="container">
             <h1 style={{ marginBottom: '2rem' }}>Panel de Administrador</h1>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                {/* Emisión Component */}
                 <section className="glass" style={{ padding: '2rem' }}>
                     <h2 style={{ marginBottom: '1.5rem' }}>Control de Emisión</h2>
                     <div style={{ textAlign: 'center', padding: '2rem' }}>
@@ -84,6 +165,7 @@ const AdminPanel = () => {
                     </div>
                 </section>
 
+                {/* Noticias Component */}
                 <section className="glass" style={{ padding: '2rem' }}>
                     <h2 style={{ marginBottom: '1.5rem' }}>Agregar Noticia</h2>
                     <form onSubmit={handleSubmitNews}>
@@ -91,38 +173,164 @@ const AdminPanel = () => {
                             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Título</label>
                             <input
                                 type="text"
-                                value={title}
+                                className="input-field"
+                                value={title || ''}
                                 onChange={(e) => setTitle(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    borderRadius: '8px',
-                                    background: 'rgba(255,255,255,0.05)',
-                                    border: '1px solid var(--glass-border)',
-                                    color: 'white'
-                                }}
                             />
                         </div>
                         <div style={{ marginBottom: '1.5rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Contenido</label>
                             <textarea
                                 rows="4"
-                                value={content}
+                                className="input-field"
+                                value={content || ''}
                                 onChange={(e) => setContent(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    borderRadius: '8px',
-                                    background: 'rgba(255,255,255,0.05)',
-                                    border: '1px solid var(--glass-border)',
-                                    color: 'white'
-                                }}
                             />
                         </div>
                         <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
                             Publicar Noticia
                         </button>
                     </form>
+                </section>
+
+                {/* Gestión de Música */}
+                <section className="glass" style={{ padding: '2rem', gridColumn: 'span 2' }}>
+                    <h2 style={{ marginBottom: '1.5rem' }}>Gestión de Música</h2>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '2rem' }}>
+                        <div>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                                <button
+                                    className={`btn ${musicType === 'file' ? 'btn-primary' : ''}`}
+                                    onClick={() => setMusicType('file')}
+                                    style={{ flex: 1, fontSize: '0.8rem' }}
+                                >
+                                    Archivo
+                                </button>
+                                <button
+                                    className={`btn ${musicType === 'youtube' ? 'btn-primary' : ''}`}
+                                    onClick={() => setMusicType('youtube')}
+                                    style={{ flex: 1, fontSize: '0.8rem' }}
+                                >
+                                    YouTube
+                                </button>
+                                <button
+                                    className={`btn ${musicType === 'spotify' ? 'btn-primary' : ''}`}
+                                    onClick={() => setMusicType('spotify')}
+                                    style={{ flex: 1, fontSize: '0.8rem' }}
+                                >
+                                    Spotify
+                                </button>
+                            </div>
+
+                            <form onSubmit={musicType === 'file' ? handleUploadMusic : handleAddLink}>
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label className="label">Título</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        value={musicTitle || ''}
+                                        onChange={(e) => setMusicTitle(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label className="label">Artista</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        value={musicArtist || ''}
+                                        onChange={(e) => setMusicArtist(e.target.value)}
+                                    />
+                                </div>
+
+                                {musicType === 'file' ? (
+                                    <div style={{ marginBottom: '1.5rem' }}>
+                                        <label className="label">Archivo MP3</label>
+                                        <input
+                                            key="file-input"
+                                            type="file"
+                                            accept="audio/*"
+                                            onChange={(e) => setMusicFile(e.target.files[0])}
+                                            className="input-field"
+                                            required
+                                        />
+                                    </div>
+                                ) : (
+                                    <div style={{ marginBottom: '1.5rem' }}>
+                                        <label className="label">URL de {musicType}</label>
+                                        <input
+                                            key="url-input"
+                                            type="url"
+                                            className="input-field"
+                                            placeholder={`https://${musicType}.com/...`}
+                                            value={musicUrl || ''}
+                                            onChange={(e) => setMusicUrl(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                )}
+
+                                <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                                    Agregar Música
+                                </button>
+                            </form>
+                        </div>
+
+                        <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                            <h3 style={{ marginBottom: '1rem', fontSize: '1rem', color: 'var(--text-secondary)' }}>Lista de Música</h3>
+                            {musicList.length === 0 ? (
+                                <p style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: '2rem' }}>No hay música agregada.</p>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {musicList.map(music => (
+                                        <div key={music.id} className="glass" style={{
+                                            padding: '0.75rem 1rem',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            background: 'rgba(255,255,255,0.03)'
+                                        }}>
+                                            <div>
+                                                <div style={{ fontWeight: '500' }}>{music.title}</div>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                    {music.artist || 'Artista desconocido'} • {music.type.toUpperCase()}
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                <button
+                                                    onClick={() => handlePlayMusic(music.id)}
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        color: 'var(--accent-color)',
+                                                        cursor: 'pointer',
+                                                        padding: '5px',
+                                                        fontSize: '1.2rem'
+                                                    }}
+                                                    title="Reproducir ahora"
+                                                >
+                                                    ▶️
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteMusic(music.id)}
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        color: '#ef4444',
+                                                        cursor: 'pointer',
+                                                        padding: '5px'
+                                                    }}
+                                                    title="Eliminar"
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </section>
             </div>
         </div>

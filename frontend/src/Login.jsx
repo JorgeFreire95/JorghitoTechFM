@@ -29,7 +29,7 @@ const Login = ({ onSuccess }) => {
                         <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Usuario</label>
                         <input
                             type="text"
-                            value={username}
+                            value={username || ''}
                             onChange={(e) => setUsername(e.target.value)}
                             className="glass"
                             style={{ width: '100%', padding: '12px', color: 'white' }}
@@ -41,7 +41,7 @@ const Login = ({ onSuccess }) => {
                         <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Contraseña</label>
                         <input
                             type="password"
-                            value={password}
+                            value={password || ''}
                             onChange={(e) => setPassword(e.target.value)}
                             className="glass"
                             style={{ width: '100%', padding: '12px', color: 'white' }}

@@ -16,3 +16,13 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+
+class Music(Base):
+    __tablename__ = "music"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, index=True)
+    artist = Column(String, index=True, nullable=True)
+    type = Column(String) # 'file', 'youtube', 'spotify'
+    path_or_url = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)

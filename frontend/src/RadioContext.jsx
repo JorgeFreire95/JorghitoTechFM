@@ -12,13 +12,13 @@ export const RadioProvider = ({ children }) => {
 
   useEffect(() => {
     // Fetch News
-    fetch('http://localhost:8001/news')
+    fetch('http://127.0.0.1:8001/news')
       .then(res => res.json())
       .then(data => setNews(data))
       .catch(err => console.error("Error fetching news:", err));
 
     // WebSocket Connection
-    const ws = new WebSocket('ws://localhost:8001/ws/listener');
+    const ws = new WebSocket('ws://127.0.0.1:8001/ws/listener');
     wsRef.current = ws;
 
     ws.onmessage = (event) => {
@@ -28,7 +28,13 @@ export const RadioProvider = ({ children }) => {
           setIsLive(data.is_live);
           setCurrentSong(data.current_song);
           if (data.current_song) {
-            setAudioURL(`http://localhost:8001/music/${data.current_song}#t=${data.elapsed}`);
+            const song = data.current_song;
+            if (song.type === 'file') {
+              setAudioURL(`http://127.0.0.1:8001${song.path_or_url}#t=${data.elapsed}`);
+            } else {
+              setAudioURL(song.path_or_url);
+            }
+            setCurrentSong(`${song.title} - ${song.artist}`);
           }
         } else if (data.type === 'live_status') {
           setIsLive(data.status);
@@ -40,7 +46,7 @@ export const RadioProvider = ({ children }) => {
   }, []);
 
   const login = async (username, password) => {
-    const res = await fetch('http://localhost:8001/login', {
+    const res = await fetch('http://127.0.0.1:8001/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })

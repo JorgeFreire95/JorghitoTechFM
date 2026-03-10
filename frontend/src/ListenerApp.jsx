@@ -33,10 +33,16 @@ const ListenerApp = () => {
                 </h2>
 
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-                    <audio key={audioURL} controls autoPlay style={{ width: '100%', maxWidth: '500px' }}>
-                        <source src={audioURL} type="audio/mpeg" />
-                        Your browser does not support the audio element.
-                    </audio>
+                    {audioURL && audioURL.includes('youtube.com') ? (
+                        <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}>
+                            <p>Esta canción es de YouTube. Para reproducirla, <a href={audioURL} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-color)' }}>haz clic aquí</a></p>
+                        </div>
+                    ) : (
+                        <audio key={audioURL} controls autoPlay style={{ width: '100%', maxWidth: '500px' }}>
+                            <source src={audioURL} type="audio/mpeg" />
+                            Your browser does not support the audio element.
+                        </audio>
+                    )}
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
