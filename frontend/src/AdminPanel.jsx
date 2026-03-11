@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useRadio } from './RadioContext';
 
 const AdminPanel = () => {
-    const { isLive, setNews } = useRadio();
+    const { isLive, isPaused, togglePause, nextSong, prevSong, setNews, volume, changeGlobalVolume } = useRadio();
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [isBroadcasting, setIsBroadcasting] = useState(false);
@@ -33,7 +33,7 @@ const AdminPanel = () => {
             ws.onopen = async () => {
                 ws.send(JSON.stringify({ type: 'start_live' }));
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const recorder = new MediaRecorder(stream);
+                const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm; codecs=opus' });
                 mediaRecorderRef.current = recorder;
 
                 recorder.ondataavailable = (e) => {
@@ -154,13 +154,54 @@ const AdminPanel = () => {
                             style={{
                                 width: '100%',
                                 justifyContent: 'center',
-                                background: isBroadcasting ? '#ef4444' : 'var(--accent-color)'
+                                background: isBroadcasting ? '#ef4444' : 'var(--accent-color)',
+                                marginBottom: '1.5rem',
+                                fontWeight: 'bold'
                             }}
                         >
-                            {isBroadcasting ? 'DETENER EN VIVO' : 'INICIAR EN VIVO'}
+                            {isBroadcasting ? '🛑 DETENER EN VIVO' : '🎙️ INICIAR EN VIVO'}
                         </button>
-                        <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
-                            {isBroadcasting ? 'Transmitiendo ahora...' : 'Listo para iniciar'}
+
+                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                            <button onClick={prevSong} className="btn" style={{ flex: 1, padding: '0.75rem' }} title="Anterior">
+                                ⏮️
+                            </button>
+                            <button
+                                onClick={() => togglePause(!isPaused)}
+                                className="btn"
+                                style={{
+                                    flex: 2,
+                                    justifyContent: 'center',
+                                    background: isPaused ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)',
+                                    color: isPaused ? 'white' : 'var(--text-primary)',
+                                    border: '1px solid rgba(255,255,255,0.2)'
+                                }}
+                            >
+                                {isPaused ? '▶️ REANUDAR' : '⏸️ PAUSAR'}
+                            </button>
+                            <button onClick={nextSong} className="btn" style={{ flex: 1, padding: '0.75rem' }} title="Siguiente">
+                                ⏭️
+                            </button>
+                        </div>
+
+                        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '10px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.8rem' }}>
+                                <span>Volumen Monitor</span>
+                                <span>{Math.round(volume * 100)}%</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value={volume}
+                                onChange={(e) => changeGlobalVolume(parseFloat(e.target.value))}
+                                style={{ width: '100%', cursor: 'pointer', accentColor: 'var(--accent-color)' }}
+                            />
+                        </div>
+
+                        <p style={{ marginTop: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                            {isBroadcasting ? '🔴 En el aire...' : (isPaused ? '⏸️ Música en espera' : '🟢 Listo para emitir')}
                         </p>
                     </div>
                 </section>

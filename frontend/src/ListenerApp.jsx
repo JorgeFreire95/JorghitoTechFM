@@ -1,8 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useRadio } from './RadioContext';
 
 const ListenerApp = () => {
-    const { isLive, currentSong, audioURL, news } = useRadio();
+    const { isLive, isPaused, currentSong, audioURL, news, subscribeToAudio, volume } = useRadio();
+    const audioRef = useRef(null);
+    const liveAudioRef = useRef(null);
+    const mediaSourceRef = useRef(null);
+    const sourceBufferRef = useRef(null);
+    const queueRef = useRef([]);
+
+    // Music Player Control
+    useEffect(() => {
+        if (audioRef.current) {
+            audioRef.current.volume = volume;
+            if (isPaused || isLive) {
+                audioRef.current.pause();
+            } else {
+                audioRef.current.play().catch(err => console.log("Auto-play blocked:", err));
+            }
+        }
+    }, [isPaused, isLive, audioURL, volume]);
+
+    // Live Streaming Control (MSE)
+    useEffect(() => {
+        if (isLive) {
+            const ms = new MediaSource();
+            mediaSourceRef.current = ms;
+
+            if (liveAudioRef.current) {
+                liveAudioRef.current.src = URL.createObjectURL(ms);
+                liveAudioRef.current.volume = volume;
+            }
+
+            const onSourceOpen = () => {
+                try {
+                    const sb = ms.addSourceBuffer('audio/webm; codecs=opus');
+                    sourceBufferRef.current = sb;
+
+                    sb.addEventListener('updateend', () => {
+                        if (queueRef.current.length > 0 && !sb.updating && ms.readyState === 'open') {
+                            sb.appendBuffer(queueRef.current.shift());
+                        }
+                    });
+                } catch (e) {
+                    console.error("Error adding source buffer:", e);
+                }
+            };
+
+            ms.addEventListener('sourceopen', onSourceOpen);
+
+            const unsubscribe = subscribeToAudio((chunk) => {
+                if (sourceBufferRef.current && !sourceBufferRef.current.updating && ms.readyState === 'open') {
+                    try {
+                        sourceBufferRef.current.appendBuffer(chunk);
+                    } catch (e) {
+                        queueRef.current.push(chunk);
+                    }
+                } else {
+                    queueRef.current.push(chunk);
+                }
+
+                if (liveAudioRef.current && liveAudioRef.current.paused) {
+                    liveAudioRef.current.play().catch(() => { });
+                }
+            });
+
+            return () => {
+                unsubscribe();
+                ms.removeEventListener('sourceopen', onSourceOpen);
+                if (ms.readyState === 'open') ms.endOfStream();
+            };
+        }
+    }, [isLive, subscribeToAudio, volume]);
 
     return (
         <div className="container">
@@ -32,17 +101,30 @@ const ListenerApp = () => {
                     {isLive ? 'Transmisión en Directo' : (currentSong || 'Sintonizando...')}
                 </h2>
 
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-                    {audioURL && audioURL.includes('youtube.com') ? (
-                        <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}>
-                            <p>Esta canción es de YouTube. Para reproducirla, <a href={audioURL} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-color)' }}>haz clic aquí</a></p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
+                    <div style={{ width: '100%', maxWidth: '500px' }}>
+                        {/* Hidden Live Audio Element */}
+                        <audio ref={liveAudioRef} style={{ display: 'none' }} />
+
+                        {audioURL && audioURL.includes('youtube.com') ? (
+                            <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                <p style={{ marginBottom: '0.5rem' }}>📺 Video detectado</p>
+                                <a href={audioURL} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ fontSize: '0.8rem' }}>
+                                    VER EN YOUTUBE
+                                </a>
+                            </div>
+                        ) : (
+                            <audio ref={audioRef} key={audioURL} controls style={{ width: '100%', borderRadius: '30px' }}>
+                                <source src={audioURL} type="audio/mpeg" />
+                            </audio>
+                        )}
+                    </div>
+
+                    <div style={{ width: '100%', maxWidth: '300px', background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '15px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            🔊 Volumen Global: {Math.round(volume * 100)}%
                         </div>
-                    ) : (
-                        <audio key={audioURL} controls autoPlay style={{ width: '100%', maxWidth: '500px' }}>
-                            <source src={audioURL} type="audio/mpeg" />
-                            Your browser does not support the audio element.
-                        </audio>
-                    )}
+                    </div>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
@@ -52,7 +134,7 @@ const ListenerApp = () => {
                             height: '20px',
                             background: 'var(--accent-color)',
                             borderRadius: '2px',
-                            animation: isLive || currentSong ? `pulse 1s ease-in-out infinite ${i * 0.1}s` : 'none'
+                            animation: (isLive || (currentSong && !isPaused)) ? `pulse 1s ease-in-out infinite ${i * 0.1}s` : 'none'
                         }}></div>
                     ))}
                 </div>

@@ -10,8 +10,12 @@ from datetime import datetime
 
 import models
 import database
-import radio_manager
 from radio_manager import radio_manager as manager
+
+# Configuration and Paths
+music_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "music"))
+if not os.path.exists(music_path):
+    os.makedirs(music_path)
 
 # Models initialization
 models.Base.metadata.create_all(bind=database.engine)
@@ -30,6 +34,12 @@ class MusicLink(BaseModel):
     artist: Optional[str] = None
     type: str
     url: str
+
+class PauseRequest(BaseModel):
+    paused: bool
+
+class VolumeRequest(BaseModel):
+    volume: float
 
 # Initialize Admin User if not exists
 def init_admin():
@@ -182,6 +192,26 @@ async def play_music_endpoint(music_id: int):
     await manager.play_song(music_id)
     return {"message": "Playing"}
 
+@app.post("/music/toggle-pause")
+async def toggle_pause(data: PauseRequest):
+    await manager.set_paused(data.paused)
+    return {"status": "success", "paused": data.paused}
+
+@app.post("/music/next")
+async def play_next():
+    await manager.next_song()
+    return {"status": "success"}
+
+@app.post("/music/previous")
+async def play_previous():
+    await manager.previous_song()
+    return {"status": "success"}
+
+@app.post("/music/volume")
+async def set_volume(data: VolumeRequest):
+    await manager.set_volume(data.volume)
+    return {"status": "success", "volume": data.volume}
+
 @app.delete("/music/{music_id}")
 def delete_music(music_id: int, db: Session = Depends(database.get_db)):
     db_music = db.query(models.Music).filter(models.Music.id == music_id).first()
@@ -199,8 +229,4 @@ def delete_music(music_id: int, db: Session = Depends(database.get_db)):
     db.commit()
     return {"message": "Deleted"}
 
-# Mount Music and Frontend Assets (At the end to avoid route conflicts)
-music_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "music"))
-if not os.path.exists(music_path):
-    os.makedirs(music_path)
 app.mount("/audio", StaticFiles(directory=music_path), name="audio")
