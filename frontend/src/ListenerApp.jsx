@@ -29,6 +29,7 @@ const ListenerApp = () => {
 
             if (liveAudioRef.current) {
                 liveAudioRef.current.src = URL.createObjectURL(ms);
+                // Initial volume set
                 liveAudioRef.current.volume = volume;
             }
 
@@ -71,7 +72,50 @@ const ListenerApp = () => {
                 if (ms.readyState === 'open') ms.endOfStream();
             };
         }
-    }, [isLive, subscribeToAudio, volume]);
+    }, [isLive, subscribeToAudio]); // Removed 'volume' from here
+
+    // Dedicated Volume Control for Live Stream
+    useEffect(() => {
+        if (isLive && liveAudioRef.current) {
+            liveAudioRef.current.volume = volume;
+        }
+    }, [volume, isLive]);
+
+    const iframeRef = useRef(null);
+
+    // Helper to extract YouTube ID
+    const getYouTubeID = (url) => {
+        if (!url) return null;
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    };
+
+    const ytID = audioURL && (audioURL.includes('youtube.com') || audioURL.includes('youtu.be')) ? getYouTubeID(audioURL) : null;
+
+    // Sync YouTube Volume
+    useEffect(() => {
+        if (ytID && iframeRef.current) {
+            const youtubeVolume = Math.round(volume * 100);
+            iframeRef.current.contentWindow.postMessage(JSON.stringify({
+                event: 'command',
+                func: 'setVolume',
+                args: [youtubeVolume]
+            }), '*');
+        }
+    }, [volume, ytID]);
+
+    // Sync YouTube Play/Pause
+    useEffect(() => {
+        if (ytID && iframeRef.current) {
+            const command = isPaused ? 'pauseVideo' : 'playVideo';
+            iframeRef.current.contentWindow.postMessage(JSON.stringify({
+                event: 'command',
+                func: command,
+                args: []
+            }), '*');
+        }
+    }, [isPaused, ytID]);
 
     return (
         <div className="container">
@@ -102,21 +146,53 @@ const ListenerApp = () => {
                 </h2>
 
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
-                    <div style={{ width: '100%', maxWidth: '500px' }}>
+                    <div style={{ width: '100%', maxWidth: '600px' }}>
                         {/* Hidden Live Audio Element */}
                         <audio ref={liveAudioRef} style={{ display: 'none' }} />
 
-                        {audioURL && audioURL.includes('youtube.com') ? (
-                            <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                <p style={{ marginBottom: '0.5rem' }}>📺 Video detectado</p>
-                                <a href={audioURL} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ fontSize: '0.8rem' }}>
-                                    VER EN YOUTUBE
-                                </a>
+                        {ytID ? (
+                            <div style={{ textAlign: 'center', padding: '2rem' }}>
+                                {/* Invisible Iframe to maintain playback */}
+                                <div style={{ 
+                                    opacity: 0, 
+                                    pointerEvents: 'none', 
+                                    position: 'absolute', 
+                                    width: '1px', 
+                                    height: '1px' 
+                                }}>
+                                    <iframe
+                                        ref={iframeRef}
+                                        src={`https://www.youtube.com/embed/${ytID}?autoplay=1&enablejsapi=1`}
+                                        title="YouTube Audio Source"
+                                        allow="autoplay"
+                                    ></iframe>
+                                </div>
+                                
+                                {/* Premium Audio-Only UI */}
+                                <div style={{ 
+                                    display: 'inline-flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    width: '120px',
+                                    height: '120px',
+                                    borderRadius: '50%',
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    border: '2px solid var(--accent-color)',
+                                    boxShadow: '0 0 30px var(--accent-color)',
+                                    marginBottom: '1rem',
+                                    animation: 'pulse-glow 2s infinite'
+                                }}>
+                                    <span style={{ fontSize: '3rem' }}>📻</span>
+                                </div>
+                                <p style={{ fontSize: '1.1rem', fontWeight: '500', color: 'var(--accent-color)' }}>Modo Solo Audio</p>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>YouTube Stream Activo</p>
                             </div>
                         ) : (
-                            <audio ref={audioRef} key={audioURL} controls style={{ width: '100%', borderRadius: '30px' }}>
-                                <source src={audioURL} type="audio/mpeg" />
-                            </audio>
+                            audioURL && !isLive && (
+                                <audio ref={audioRef} key={audioURL} controls style={{ width: '100%', borderRadius: '30px' }}>
+                                    <source src={audioURL} type="audio/mpeg" />
+                                </audio>
+                            )
                         )}
                     </div>
 
@@ -158,6 +234,10 @@ const ListenerApp = () => {
         @keyframes pulse {
             0%, 100% { height: 20px; opacity: 0.5; }
             50% { height: 40px; opacity: 1; }
+        }
+        @keyframes pulse-glow {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 10px var(--accent-color); }
+            50% { transform: scale(1.05); box-shadow: 0 0 30px var(--accent-color); }
         }
       `}</style>
         </div>

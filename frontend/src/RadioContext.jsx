@@ -72,7 +72,7 @@ export const RadioProvider = ({ children }) => {
     return () => ws.close();
   }, []);
 
-  const login = async (username, password) => {
+  const login = React.useCallback(async (username, password) => {
     const res = await fetch('http://127.0.0.1:8001/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -85,41 +85,41 @@ export const RadioProvider = ({ children }) => {
       return true;
     }
     return false;
-  };
+  }, []);
 
-  const togglePause = async (paused) => {
+  const togglePause = React.useCallback(async (paused) => {
     await fetch('http://127.0.0.1:8001/music/toggle-pause', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ paused })
     });
-  };
+  }, []);
 
-  const nextSong = async () => {
+  const nextSong = React.useCallback(async () => {
     await fetch('http://127.0.0.1:8001/music/next', { method: 'POST' });
-  };
+  }, []);
 
-  const prevSong = async () => {
+  const prevSong = React.useCallback(async () => {
     await fetch('http://127.0.0.1:8001/music/previous', { method: 'POST' });
-  };
+  }, []);
 
-  const changeGlobalVolume = async (newVolume) => {
+  const changeGlobalVolume = React.useCallback(async (newVolume) => {
     await fetch('http://127.0.0.1:8001/music/volume', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ volume: newVolume })
     });
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = React.useCallback(() => {
     setUser(null);
     localStorage.removeItem('user');
-  };
+  }, []);
 
-  const subscribeToAudio = (callback) => {
+  const subscribeToAudio = React.useCallback((callback) => {
     onAudioDataRef.current = callback;
     return () => { onAudioDataRef.current = null; };
-  };
+  }, []);
 
   return (
     <RadioContext.Provider value={{
