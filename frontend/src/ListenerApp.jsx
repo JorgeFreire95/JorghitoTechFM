@@ -3,83 +3,9 @@ import { useRadio } from './RadioContext';
 
 const ListenerApp = () => {
     const { isLive, isPaused, currentSong, audioURL, news, subscribeToAudio, volume } = useRadio();
-    const audioRef = useRef(null);
-    const liveAudioRef = useRef(null);
-    const mediaSourceRef = useRef(null);
-    const sourceBufferRef = useRef(null);
-    const queueRef = useRef([]);
-
     // Music Player Control
-    useEffect(() => {
-        if (audioRef.current) {
-            audioRef.current.volume = volume;
-            if (isPaused || isLive) {
-                audioRef.current.pause();
-            } else {
-                audioRef.current.play().catch(err => console.log("Auto-play blocked:", err));
-            }
-        }
-    }, [isPaused, isLive, audioURL, volume]);
-
-    // Live Streaming Control (MSE)
-    useEffect(() => {
-        if (isLive) {
-            const ms = new MediaSource();
-            mediaSourceRef.current = ms;
-
-            if (liveAudioRef.current) {
-                liveAudioRef.current.src = URL.createObjectURL(ms);
-                // Initial volume set
-                liveAudioRef.current.volume = volume;
-            }
-
-            const onSourceOpen = () => {
-                try {
-                    const sb = ms.addSourceBuffer('audio/webm; codecs=opus');
-                    sourceBufferRef.current = sb;
-
-                    sb.addEventListener('updateend', () => {
-                        if (queueRef.current.length > 0 && !sb.updating && ms.readyState === 'open') {
-                            sb.appendBuffer(queueRef.current.shift());
-                        }
-                    });
-                } catch (e) {
-                    console.error("Error adding source buffer:", e);
-                }
-            };
-
-            ms.addEventListener('sourceopen', onSourceOpen);
-
-            const unsubscribe = subscribeToAudio((chunk) => {
-                if (sourceBufferRef.current && !sourceBufferRef.current.updating && ms.readyState === 'open') {
-                    try {
-                        sourceBufferRef.current.appendBuffer(chunk);
-                    } catch (e) {
-                        queueRef.current.push(chunk);
-                    }
-                } else {
-                    queueRef.current.push(chunk);
-                }
-
-                if (liveAudioRef.current && liveAudioRef.current.paused) {
-                    liveAudioRef.current.play().catch(() => { });
-                }
-            });
-
-            return () => {
-                unsubscribe();
-                ms.removeEventListener('sourceopen', onSourceOpen);
-                if (ms.readyState === 'open') ms.endOfStream();
-            };
-        }
-    }, [isLive, subscribeToAudio]); // Removed 'volume' from here
-
-    // Dedicated Volume Control for Live Stream
-    useEffect(() => {
-        if (isLive && liveAudioRef.current) {
-            liveAudioRef.current.volume = volume;
-        }
-    }, [volume, isLive]);
+    // The `<audio>` and Live Streaming (MSE) logic has been moved to `RadioContext.jsx` 
+    // to enable persistent background playback across the application.
 
     const iframeRef = useRef(null);
 
@@ -117,6 +43,8 @@ const ListenerApp = () => {
         }
     }, [isPaused, ytID]);
 
+
+
     return (
         <div className="container">
             <header style={{ marginBottom: '3rem', textAlign: 'center' }}>
@@ -147,53 +75,6 @@ const ListenerApp = () => {
 
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
                     <div style={{ width: '100%', maxWidth: '600px' }}>
-                        {/* Hidden Live Audio Element */}
-                        <audio ref={liveAudioRef} style={{ display: 'none' }} />
-
-                        {ytID ? (
-                            <div style={{ textAlign: 'center', padding: '2rem' }}>
-                                {/* Invisible Iframe to maintain playback */}
-                                <div style={{ 
-                                    opacity: 0, 
-                                    pointerEvents: 'none', 
-                                    position: 'absolute', 
-                                    width: '1px', 
-                                    height: '1px' 
-                                }}>
-                                    <iframe
-                                        ref={iframeRef}
-                                        src={`https://www.youtube.com/embed/${ytID}?autoplay=1&enablejsapi=1`}
-                                        title="YouTube Audio Source"
-                                        allow="autoplay"
-                                    ></iframe>
-                                </div>
-                                
-                                {/* Premium Audio-Only UI */}
-                                <div style={{ 
-                                    display: 'inline-flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center',
-                                    width: '120px',
-                                    height: '120px',
-                                    borderRadius: '50%',
-                                    background: 'rgba(255, 255, 255, 0.05)',
-                                    border: '2px solid var(--accent-color)',
-                                    boxShadow: '0 0 30px var(--accent-color)',
-                                    marginBottom: '1rem',
-                                    animation: 'pulse-glow 2s infinite'
-                                }}>
-                                    <span style={{ fontSize: '3rem' }}>📻</span>
-                                </div>
-                                <p style={{ fontSize: '1.1rem', fontWeight: '500', color: 'var(--accent-color)' }}>Modo Solo Audio</p>
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>YouTube Stream Activo</p>
-                            </div>
-                        ) : (
-                            audioURL && !isLive && (
-                                <audio ref={audioRef} key={audioURL} controls style={{ width: '100%', borderRadius: '30px' }}>
-                                    <source src={audioURL} type="audio/mpeg" />
-                                </audio>
-                            )
-                        )}
                     </div>
 
                     <div style={{ width: '100%', maxWidth: '300px', background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '15px', textAlign: 'center' }}>

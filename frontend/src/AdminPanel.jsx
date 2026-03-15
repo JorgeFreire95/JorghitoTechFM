@@ -11,7 +11,7 @@ const AdminPanel = () => {
 
     const handleSubmitNews = async (e) => {
         e.preventDefault();
-        const res = await fetch('http://127.0.0.1:8001/news', {
+        const res = await fetch('http://127.0.0.1:8000/news', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ title, content })
@@ -27,7 +27,7 @@ const AdminPanel = () => {
     const toggleLive = async () => {
         if (!isBroadcasting) {
             // Start Live
-            const ws = new WebSocket('ws://127.0.0.1:8001/ws/admin');
+            const ws = new WebSocket('ws://127.0.0.1:8000/ws/admin');
             wsRef.current = ws;
 
             ws.onopen = async () => {
@@ -63,14 +63,14 @@ const AdminPanel = () => {
     const [musicArtist, setMusicArtist] = useState('');
     const [musicUrl, setMusicUrl] = useState('');
     const [musicFile, setMusicFile] = useState(null);
-    const [musicType, setMusicType] = useState('file'); // 'file', 'youtube', 'spotify'
-
+    const [musicType, setMusicType] = useState('file'); // 'file', 'youtube'
+    
     React.useEffect(() => {
         fetchMusic();
     }, []);
 
     const fetchMusic = async () => {
-        const res = await fetch('http://127.0.0.1:8001/music');
+        const res = await fetch('http://127.0.0.1:8000/music');
         if (res.ok) {
             const data = await res.json();
             setMusicList(data);
@@ -84,7 +84,7 @@ const AdminPanel = () => {
         formData.append('artist', musicArtist);
         formData.append('file', musicFile);
 
-        const res = await fetch('http://127.0.0.1:8001/music/upload', {
+        const res = await fetch('http://127.0.0.1:8000/music/upload', {
             method: 'POST',
             body: formData
         });
@@ -98,7 +98,7 @@ const AdminPanel = () => {
 
     const handleAddLink = async (e) => {
         e.preventDefault();
-        const res = await fetch('http://127.0.0.1:8001/music/link', {
+        const res = await fetch('http://127.0.0.1:8000/music/link', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -117,7 +117,7 @@ const AdminPanel = () => {
     };
 
     const handleDeleteMusic = async (id) => {
-        const res = await fetch(`http://127.0.0.1:8001/music/${id}`, {
+        const res = await fetch(`http://127.0.0.1:8000/music/${id}`, {
             method: 'DELETE'
         });
         if (res.ok) {
@@ -126,7 +126,7 @@ const AdminPanel = () => {
     };
 
     const handlePlayMusic = async (id) => {
-        await fetch(`http://127.0.0.1:8001/music/${id}/play`, {
+        await fetch(`http://127.0.0.1:8000/music/${id}/play`, {
             method: 'POST'
         });
     };
@@ -253,13 +253,6 @@ const AdminPanel = () => {
                                     style={{ flex: 1, fontSize: '0.8rem' }}
                                 >
                                     YouTube
-                                </button>
-                                <button
-                                    className={`btn ${musicType === 'spotify' ? 'btn-primary' : ''}`}
-                                    onClick={() => setMusicType('spotify')}
-                                    style={{ flex: 1, fontSize: '0.8rem' }}
-                                >
-                                    Spotify
                                 </button>
                             </div>
 
